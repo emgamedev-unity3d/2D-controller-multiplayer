@@ -1,16 +1,14 @@
-using UnityEngine;
+using Unity.Cinemachine;
+using Unity.Netcode;
 
-public class HeyCameraLookAtMe_Networked : MonoBehaviour
+public class HeyCameraLookAtMe_Networked : NetworkBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        
-    }
+        if (!IsOwner)
+            return;
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+        var cam = FindAnyObjectByType<CinemachineCamera>();
+        cam.Target.TrackingTarget = transform;
     }
 }
