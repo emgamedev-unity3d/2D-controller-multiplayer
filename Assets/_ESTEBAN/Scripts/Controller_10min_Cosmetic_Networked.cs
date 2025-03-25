@@ -7,7 +7,7 @@ public class Controller_10min_Cosmetic_Networked : NetworkBehaviour
     public float jumpForce = 5f;
 
     //Added after the timer
-    Animator anim;
+    OwnerNetworkAnimator ownerNetworkAnim;
     SpriteRenderer sprite;
     int direction = 1;
 
@@ -19,24 +19,30 @@ public class Controller_10min_Cosmetic_Networked : NetworkBehaviour
         rb = GetComponent<Rigidbody2D>();
 
         //Added after the timer
-        anim = GetComponentInChildren<Animator>(true);
+        ownerNetworkAnim = GetComponent<OwnerNetworkAnimator>();
         sprite = GetComponentInChildren<SpriteRenderer>(true);
     }
 
 
 	void Update()
 	{
+        if (!IsOwner)
+            return;
+
         if (Input.GetButtonDown("Jump"))
         {
             rb.AddForceY(jumpForce, ForceMode2D.Impulse);
 
             //Added after the timer
-            anim.SetTrigger("Jump");
+            ownerNetworkAnim.SetTrigger("Jump");
         }
     }
 
-	void FixedUpdate()
+	  void FixedUpdate()
     {
+        if (!IsOwner)
+            return;
+
         var velocity = speed * Input.GetAxis("Horizontal");
         rb.linearVelocity = new Vector2(velocity, rb.linearVelocityY);
 
@@ -44,7 +50,9 @@ public class Controller_10min_Cosmetic_Networked : NetworkBehaviour
         if (Input.GetAxis("Horizontal") * direction < 0f)
             FlipDirection();
 
-        anim.SetFloat("Speed", Mathf.Abs(Input.GetAxis("Horizontal")));
+        ownerNetworkAnim.Animator.SetFloat(
+            "Speed",
+            Mathf.Abs(Input.GetAxis("Horizontal")));
     }
 
     //Added after the timer
@@ -56,5 +64,15 @@ public class Controller_10min_Cosmetic_Networked : NetworkBehaviour
             sprite.flipX = false;
         else
             sprite.flipX = true;
+
+        EverybodyElseFlipDirectionRpc();
+    }
+
+    [Rpc(
+        target:SendTo.NotMe,
+        Delivery = RpcDelivery.Reliable)]
+    void EverybodyElseFlipDirectionRpc()
+    {
+        sprite.flipX = !sprite.flipX;
     }
 }
