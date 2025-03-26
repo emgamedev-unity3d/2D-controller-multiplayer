@@ -9,7 +9,11 @@ public class Controller_10min_Cosmetic_Networked : NetworkBehaviour
     //Added after the timer
     OwnerNetworkAnimator ownerNetworkAnim;
     SpriteRenderer sprite;
-    int direction = 1;
+
+    readonly NetworkVariable<int> direction = new(
+        1,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner);
 
     Rigidbody2D rb;
 
@@ -21,6 +25,11 @@ public class Controller_10min_Cosmetic_Networked : NetworkBehaviour
         //Added after the timer
         ownerNetworkAnim = GetComponent<OwnerNetworkAnimator>();
         sprite = GetComponentInChildren<SpriteRenderer>(true);
+
+        if(!IsOwner && IsClient)
+        {
+            direction.OnValueChanged += EverybodyElseFlipDirection;
+        }
     }
 
 
@@ -47,7 +56,7 @@ public class Controller_10min_Cosmetic_Networked : NetworkBehaviour
         rb.linearVelocity = new Vector2(velocity, rb.linearVelocityY);
 
         //Added after the timer
-        if (Input.GetAxis("Horizontal") * direction < 0f)
+        if (Input.GetAxis("Horizontal") * direction.Value < 0f)
             FlipDirection();
 
         ownerNetworkAnim.Animator.SetFloat(
@@ -58,21 +67,19 @@ public class Controller_10min_Cosmetic_Networked : NetworkBehaviour
     //Added after the timer
     void FlipDirection()
     {
-        direction *= -1;
+        direction.Value *= -1;
 
-        if (direction > 0)
+        if (direction.Value > 0)
             sprite.flipX = false;
         else
             sprite.flipX = true;
-
-        EverybodyElseFlipDirectionRpc();
     }
 
-    [Rpc(
-        target:SendTo.NotMe,
-        Delivery = RpcDelivery.Reliable)]
-    void EverybodyElseFlipDirectionRpc()
+    void EverybodyElseFlipDirection(int oldValue, int newValue)
     {
-        sprite.flipX = !sprite.flipX;
+        if (newValue > 0)
+            sprite.flipX = false;
+        else
+            sprite.flipX = true;
     }
 }
