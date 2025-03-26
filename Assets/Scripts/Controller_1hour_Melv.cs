@@ -7,7 +7,7 @@ public class Controller_1hour_Melv : MonoBehaviour
     public bool isGrounded;
     public Collider2D groundedCollider;
     public ContactFilter2D groundedFilter;
-    public Rigidbody2D.SlideMovement slideMovement = new();   
+    public Rigidbody2D.SlideMovement slideMovement = new();
 
     //Added after the timer
     Animator anim;

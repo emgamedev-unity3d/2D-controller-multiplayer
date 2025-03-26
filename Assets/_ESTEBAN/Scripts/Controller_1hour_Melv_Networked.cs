@@ -5,7 +5,12 @@ public class Controller_1hour_Melv_Networked : NetworkBehaviour
 {
     public float speed = 5f;
     public float jumpForce = 5f;
-    public bool isGrounded;
+
+    private readonly NetworkVariable<bool> isGrounded = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner);
+
     public Collider2D groundedCollider;
     public ContactFilter2D groundedFilter;
     public Rigidbody2D.SlideMovement slideMovement = new();
@@ -13,10 +18,25 @@ public class Controller_1hour_Melv_Networked : NetworkBehaviour
     //Added after the timer
     Animator anim;
     SpriteRenderer sprite;
-    int direction = 1;
+    readonly NetworkVariable<int> direction = new(
+        1,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner);
+
     float horizontalInput;
 
     Rigidbody2D rb;
+
+    public override void OnNetworkSpawn()
+    {
+        if (!IsOwner && IsClient)
+        {
+            direction.OnValueChanged += EverybodyElseFlipDirection;
+            isGrounded.OnValueChanged += EverybodyElseUpdateSpriteColoring;
+        }
+
+        base.OnNetworkSpawn();
+    }
 
     void Start()
     {
@@ -37,12 +57,12 @@ public class Controller_1hour_Melv_Networked : NetworkBehaviour
         horizontalInput = Input.GetAxisRaw("Horizontal");
 
         // Flip appropriately.
-        if (horizontalInput * direction < 0f)
+        if (horizontalInput * direction.Value < 0f)
             FlipDirection();
 
         // If we're grounded then we can jump.
         // NOTE: We're using a Dynamic body, so we use linear-velocity for jumping.
-        if (isGrounded && Input.GetButtonDown("Jump"))
+        if (isGrounded.Value && Input.GetButtonDown("Jump"))
             rb.linearVelocityY = jumpForce;
     }
 
@@ -52,7 +72,7 @@ public class Controller_1hour_Melv_Networked : NetworkBehaviour
             return;
 
         // Are we grounded?
-        isGrounded = groundedCollider.IsTouching(groundedFilter);
+        isGrounded.Value = groundedCollider.IsTouching(groundedFilter);
 
         UpdateSpriteColoring();
 
@@ -65,7 +85,7 @@ public class Controller_1hour_Melv_Networked : NetworkBehaviour
 
             // Are we grounded and not jumping/falling?
             var isJumpingFalling = Mathf.Abs(rb.linearVelocityY) >= 0.01f;
-            if (isGrounded && !isJumpingFalling)
+            if (isGrounded.Value && !isJumpingFalling)
             {
                 // Yes, so perform a slide.
                 var slideVelocity = new Vector2(horizontalSpeed, rb.linearVelocity.y);
@@ -81,7 +101,7 @@ public class Controller_1hour_Melv_Networked : NetworkBehaviour
 
             // Are we in the air?
             // NOTE: We only do this if we want horizontal movement when jumping/falling.
-            if (!isGrounded)
+            if (!isGrounded.Value)
             {
                 // Yes, so use Dynamic body motion.
                 rb.linearVelocityX = horizontalSpeed;
@@ -91,38 +111,31 @@ public class Controller_1hour_Melv_Networked : NetworkBehaviour
 
     void FlipDirection()
     {
-        direction *= -1;
+        direction.Value *= -1;
 
-        if (direction > 0)
+        if (direction.Value > 0)
             sprite.flipX = false;
         else
             sprite.flipX = true;
-
-        EverybodyElseFlipDirectionRpc();
     }
 
-    [Rpc(
-    target: SendTo.NotMe,
-    Delivery = RpcDelivery.Reliable)]
-    void EverybodyElseFlipDirectionRpc()
+    void EverybodyElseFlipDirection(int oldValue, int newValue)
     {
-        sprite.flipX = !sprite.flipX;
+        if (newValue > 0)
+            sprite.flipX = false;
+        else
+            sprite.flipX = true;
     }
 
     void UpdateSpriteColoring()
     {
         // Visually indicate if we're grounded or not.
-        sprite.color = isGrounded ? Color.green : Color.red;
-
-        EverybodyElseUpdateSpriteColoringRpc(isGrounded);
+        sprite.color = isGrounded.Value ? Color.green : Color.red;
     }
 
-    [Rpc(
-        target: SendTo.NotMe,
-        Delivery = RpcDelivery.Reliable)]
-    void EverybodyElseUpdateSpriteColoringRpc(bool isGrounded)
+    void EverybodyElseUpdateSpriteColoring(bool oldValue, bool newValue)
     {
         // Visually indicate if we're grounded or not.
-        sprite.color = isGrounded ? Color.green : Color.red;
+        sprite.color = newValue ? Color.green : Color.red;
     }
 }
