@@ -182,6 +182,8 @@ MonoBehaviour:
   jumpPressed: 0
   crouchHeld: 0
   crouchPressed: 0
+  dashPressed: 0
+  dashHeld: 0
 --- !u!70 &5675444591742583865
 CapsuleCollider2D:
   m_ObjectHideFlags: 0

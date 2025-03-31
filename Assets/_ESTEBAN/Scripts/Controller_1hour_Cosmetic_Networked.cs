@@ -14,8 +14,16 @@ public class Controller_1hour_Cosmetic_Networked : NetworkBehaviour
     Rigidbody2D rb;
     PlayerInput input;
 
-    int direction = 1;
-    bool isGrounded;
+    readonly NetworkVariable<int> direction = new(
+        1,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner);
+
+    private readonly NetworkVariable<bool> isGrounded = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner);
+
     bool hasDoubleJump;
 
     //Added after the timer
@@ -24,6 +32,17 @@ public class Controller_1hour_Cosmetic_Networked : NetworkBehaviour
     public GameObject jumpDustFX;
 
 
+    public override void OnNetworkSpawn()
+    {
+        if (!IsOwner && IsClient)
+        {
+            direction.OnValueChanged += EverybodyElseFlipDirection;
+            isGrounded.OnValueChanged += EverybodyElseUpdateSpriteColoring;
+        }
+
+        base.OnNetworkSpawn();
+    }
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -31,6 +50,13 @@ public class Controller_1hour_Cosmetic_Networked : NetworkBehaviour
 
         ownerNetworkAnimator = GetComponent<OwnerNetworkAnimator>();
         sprite = GetComponentInChildren<SpriteRenderer>(true);
+
+        // do an initial check on sprite color, to make sure we spawn and
+        //  start correctly
+        if(!IsOwner && IsClient)
+        {
+            ApplySpriteColoringUpdates(isGrounded.Value);
+        }
     }
 
     void FixedUpdate()
@@ -45,16 +71,14 @@ public class Controller_1hour_Cosmetic_Networked : NetworkBehaviour
 
         //Added after the timer
         ownerNetworkAnimator.Animator.SetFloat("vSpeed", rb.linearVelocityY);
-        ownerNetworkAnimator.Animator.SetBool("Grounded", isGrounded);
+        ownerNetworkAnimator.Animator.SetBool("Grounded", isGrounded.Value);
     }
 
     void UpdateSpriteColoring()
     {
-        isGrounded = slideMovement.selectedCollider.IsTouching(groundFilter);
+        isGrounded.Value = slideMovement.selectedCollider.IsTouching(groundFilter);
 
-        ApplySpriteColoringUpdates(isGrounded);
-
-        EverybodyElseUpdateSpriteColoringRpc(isGrounded);
+        ApplySpriteColoringUpdates(isGrounded.Value);
     }
 
     void ApplySpriteColoringUpdates(bool isGrounded)
@@ -70,20 +94,12 @@ public class Controller_1hour_Cosmetic_Networked : NetworkBehaviour
         }
     }
 
-    [Rpc(
-        target: SendTo.NotMe,
-        Delivery = RpcDelivery.Reliable)]
-    void EverybodyElseUpdateSpriteColoringRpc(bool isGrounded)
-    {
-        ApplySpriteColoringUpdates(isGrounded);
-    }
-
     void ProcessHorizontalMove()
     {
         float xVel = input.horizontal * speed;
 
         //If on the ground, use Slide
-        if (isGrounded)
+        if (isGrounded.Value)
         {
             var slideVelocity = new Vector2(xVel, rb.linearVelocity.y);
             rb.Slide(slideVelocity, Time.fixedDeltaTime, slideMovement);
@@ -93,7 +109,7 @@ public class Controller_1hour_Cosmetic_Networked : NetworkBehaviour
             rb.linearVelocityX = xVel;
         }
 
-        if (input.horizontal * direction < 0f)
+        if (input.horizontal * direction.Value < 0f)
             FlipDirection();
 
         ownerNetworkAnimator.Animator.SetFloat("Speed", Mathf.Abs(xVel));
@@ -101,19 +117,19 @@ public class Controller_1hour_Cosmetic_Networked : NetworkBehaviour
 
     void ProcessJump()
     {
-        if (input.jumpPressed && (isGrounded || hasDoubleJump))
+        if (input.jumpPressed && (isGrounded.Value || hasDoubleJump))
         {
             rb.linearVelocityY = 0f;
             rb.AddForceY(jumpForce, ForceMode2D.Impulse);
 
-            if (isGrounded)
+            if (isGrounded.Value)
             {
                 slideMovement.selectedCollider.enabled = false;
 
                 CancelInvoke("EnableCollider");
                 Invoke("EnableCollider", jumpColliderDisableTime);
 
-                isGrounded = false;
+                isGrounded.Value = false;
 
                 // Added after the timer
                 var fx = Instantiate(
@@ -146,21 +162,24 @@ public class Controller_1hour_Cosmetic_Networked : NetworkBehaviour
 
     void FlipDirection()
     {
-        direction *= -1;
+        direction.Value *= -1;
 
-        if (direction > 0)
+        if (direction.Value > 0)
             sprite.flipX = false;
         else
             sprite.flipX = true;
-
-        EverybodyElseFlipDirectionRpc();
     }
 
-    [Rpc(
-        target: SendTo.NotMe,
-        Delivery = RpcDelivery.Reliable)]
-    void EverybodyElseFlipDirectionRpc()
+    void EverybodyElseFlipDirection(int oldValue, int newValue)
     {
-        sprite.flipX = !sprite.flipX;
+        if (newValue > 0)
+            sprite.flipX = false;
+        else
+            sprite.flipX = true;
+    }
+
+    void EverybodyElseUpdateSpriteColoring(bool oldValue, bool newValue)
+    {
+        ApplySpriteColoringUpdates(newValue);
     }
 }
