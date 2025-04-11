@@ -131,34 +131,67 @@ public class Controller_1hour_Cosmetic_Networked : NetworkBehaviour
 
                 isGrounded.Value = false;
 
-                // Added after the timer
-                var fx = Instantiate(
-                    jumpDustFX,
-                    footFXPosition.position,
-                    Quaternion.identity);
+                CreateFirstJumpFX();
 
-                Destroy(fx, .5f);
+                // tell the other players that we've made our first jump,
+                // and that they should also spawn the FX
+                EverybodyElseCreateFirstJumpFX_Rpc();
             }
             else
             {
                 hasDoubleJump = false;
 
-                // Added after the timer
-                var fx = Instantiate(
-                    doubleJumpFX,
-                    footFXPosition.position,
-                    Quaternion.identity);
+                CreateSecondJumpFX();
 
-                Destroy(fx, .5f);
+                // tell the other players that we've made our double jump,
+                // and that they should also spawn the FX
+                EverybodyElseCreateSecondJumpFX_Rpc();
             }
         }
+    }
+
+    void CreateFirstJumpFX()
+    {
+        // Added after the timer
+        var fx = Instantiate(
+            jumpDustFX,
+            footFXPosition.position,
+            Quaternion.identity);
+
+        Destroy(fx, .5f);
+    }
+
+    [Rpc(SendTo.NotMe, //send RPC to everyone except me
+        Delivery = RpcDelivery.Unreliable)] 
+        // ^ non-critical message. Not the end of the world if
+        //   a particle FX is not spawned since the purpose is just
+        //   cosmetic, and does not affect important gameplay
+    void EverybodyElseCreateFirstJumpFX_Rpc()
+    {
+        CreateFirstJumpFX();
+    }
+
+    void CreateSecondJumpFX()
+    {
+        // Added after the timer
+        var fx = Instantiate(
+            doubleJumpFX,
+            footFXPosition.position,
+            Quaternion.identity);
+
+        Destroy(fx, .5f);
+    }
+
+    [Rpc(SendTo.NotMe, Delivery = RpcDelivery.Unreliable)]
+    void EverybodyElseCreateSecondJumpFX_Rpc()
+    {
+        CreateSecondJumpFX();
     }
 
     void EnableCollider()
     {
         slideMovement.selectedCollider.enabled = true;
     }
-
 
     void FlipDirection()
     {

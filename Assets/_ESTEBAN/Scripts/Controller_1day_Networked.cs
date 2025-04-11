@@ -39,11 +39,19 @@ public class Controller_1day_Networked : NetworkBehaviour
     Rigidbody2D rb;
     PlayerInput input;
 
-    int direction = 1;
+    readonly NetworkVariable<int> direction = new(
+        1,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner);
+
     float jumpTime;
     float coyoteTime;
 
-    public bool isGrounded;
+    private readonly NetworkVariable<bool> isGrounded = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner);
+
     public bool isFirstJumping;
     public bool hasDoubleJump;
     public bool justBeganJump;
@@ -63,6 +71,29 @@ public class Controller_1day_Networked : NetworkBehaviour
     public GameObject dashDustFX;
     public TrailRenderer trail;
 
+    public override void OnNetworkSpawn()
+    {
+        if (!IsOwner && IsClient)
+        {
+            direction.OnValueChanged += EverybodyElseFlipDirection;
+            isGrounded.OnValueChanged += EverybodyElseUpdateSpriteColoring;
+        }
+
+        base.OnNetworkSpawn();
+    }
+
+    void EverybodyElseFlipDirection(int oldValue, int newValue)
+    {
+        if (newValue > 0)
+            sprite.flipX = false;
+        else
+            sprite.flipX = true;
+    }
+
+    void EverybodyElseUpdateSpriteColoring(bool oldValue, bool newValue)
+    {
+        SetColor();
+    }
 
     void Start()
     {
@@ -73,7 +104,7 @@ public class Controller_1day_Networked : NetworkBehaviour
         sprite = GetComponentInChildren<SpriteRenderer>(true);
     }
 
-	void FixedUpdate()
+	  void FixedUpdate()
     {
         if (!IsOwner)
             return;
@@ -86,15 +117,15 @@ public class Controller_1day_Networked : NetworkBehaviour
         // VFX
         SetColor();
         ownerNetworkAnimator.Animator.SetFloat("vSpeed", rb.linearVelocityY);
-        ownerNetworkAnimator.Animator.SetBool("Grounded", isGrounded);
+        ownerNetworkAnimator.Animator.SetBool("Grounded", isGrounded.Value);
     }
 
     void PhysicsCheck()
     {
         if(!justBeganJump)
-            isGrounded = groundedCollider.IsTouching(groundFilter);
+            isGrounded.Value = groundedCollider.IsTouching(groundFilter);
 
-        if (isGrounded)
+        if (isGrounded.Value)
         {
             hasDoubleJump = true;
             isFirstJumping = false;
@@ -103,23 +134,37 @@ public class Controller_1day_Networked : NetworkBehaviour
         }
 
         //Determine the direction of the wall grab attempt
-        Vector2 grabDir = new Vector2(direction, 0f);
+        Vector2 grabDir = new Vector2(direction.Value, 0f);
 
         //Cast three rays to look for a wall grab
-        RaycastHit2D blockedCheck = RaycastHelper(new Vector2(edgeGrabOffset * direction, playerHeight), grabDir, grabDistance);
-        RaycastHit2D ledgeCheck = RaycastHelper(new Vector2(reachOffset * direction, playerHeight), Vector2.down, grabDistance);
-        RaycastHit2D wallCheck = RaycastHelper(new Vector2(edgeGrabOffset * direction, eyeHeight), grabDir, grabDistance);
+        RaycastHit2D blockedCheck = 
+            RaycastHelper(
+                new Vector2(edgeGrabOffset * direction.Value, playerHeight), 
+                grabDir,
+                grabDistance);
+
+        RaycastHit2D ledgeCheck = 
+            RaycastHelper(
+                new Vector2(reachOffset * direction.Value, playerHeight),
+                Vector2.down,
+                grabDistance);
+
+        RaycastHit2D wallCheck = 
+            RaycastHelper(
+                new Vector2(edgeGrabOffset * direction.Value, eyeHeight),
+                grabDir,
+                grabDistance);
 
 
         //If the player is off the ground AND is not hanging AND is falling AND
         //found a ledge AND found a wall AND the grab is NOT blocked...
-        if (!isGrounded && !isHanging && rb.linearVelocityY < 0f &&
+        if (!isGrounded.Value && !isHanging && rb.linearVelocityY < 0f &&
             ledgeCheck && wallCheck && !blockedCheck)
         {
             //...we have a ledge grab. Record the current position...
             Vector3 pos = transform.position;
             //...move the distance to the wall (minus a small amount)...
-            pos.x += (wallCheck.distance - .0f) * direction;
+            pos.x += (wallCheck.distance - .0f) * direction.Value;
             //...move the player down to grab onto the ledge...
             pos.y -= ledgeCheck.distance;
             //...apply this position to the platform...
@@ -154,7 +199,7 @@ public class Controller_1day_Networked : NetworkBehaviour
 
 
         //If on the ground, use Slide
-        if (isGrounded)
+        if (isGrounded.Value)
         {
             var slideVelocity = new Vector2(xVel, rb.linearVelocity.y);
             rb.Slide(slideVelocity, Time.fixedDeltaTime, slideMovement);
@@ -168,7 +213,7 @@ public class Controller_1day_Networked : NetworkBehaviour
             rb.linearVelocityX = xVel;
         }
 
-        if (input.horizontal * direction < 0f)
+        if (input.horizontal * direction.Value < 0f)
             FlipDirection();            
 
         ownerNetworkAnimator.Animator.SetFloat("Speed", Mathf.Abs(xVel));
@@ -210,9 +255,11 @@ public class Controller_1day_Networked : NetworkBehaviour
         }
 
         // Initial Jump
-        if (input.jumpPressed && !isFirstJumping && (isGrounded || coyoteTime > Time.time))
+        if (input.jumpPressed && 
+            !isFirstJumping &&
+            (isGrounded.Value || coyoteTime > Time.time))
         {
-            isGrounded = false;
+            isGrounded.Value = false;
             isFirstJumping = true;
 
             jumpTime = Time.time + jumpHoldDuration;
@@ -269,14 +316,14 @@ public class Controller_1day_Networked : NetworkBehaviour
         isDashing = true;
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0f;
-        rb.linearVelocity = new Vector2(direction * dashingPower, 0f);
+        rb.linearVelocity = new Vector2(direction.Value * dashingPower, 0f);
 
         //VFX
         trail.emitting = true;
         ownerNetworkAnimator.SetTrigger("Dash");
         ownerNetworkAnimator.Animator.SetBool("isDashing", true);
         var dust = Instantiate(dashDustFX, footFXPosition.position, Quaternion.identity);
-        dust.transform.localScale = new Vector3(direction, 1, 1);
+        dust.transform.localScale = new Vector3(direction.Value, 1, 1);
         Destroy(dust, .5f);
 
         yield return new WaitForSeconds(dashingTime);
@@ -299,7 +346,7 @@ public class Controller_1day_Networked : NetworkBehaviour
             sprite.color = Color.cyan;
         else if (isDashing)
             sprite.color = Color.green;
-        else if (!isGrounded)
+        else if (!isGrounded.Value)
             sprite.color = Color.red;
         else
             sprite.color = Color.white;
@@ -307,9 +354,9 @@ public class Controller_1day_Networked : NetworkBehaviour
 
     void FlipDirection()
     {
-        direction *= -1;
+        direction.Value *= -1;
 
-        if (direction > 0)
+        if (direction.Value > 0)
             sprite.flipX = false;
         else
             sprite.flipX = true;

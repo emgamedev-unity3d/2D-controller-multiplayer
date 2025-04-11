@@ -8,6 +8,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_ESTEBAN/Playground_Networked.unity
     guid: aed298190730d41599be3e622c1e8321
+  - enabled: 1
+    path: Assets/_ESTEBAN/Playground_Race_Networked.unity
+    guid: d3a5d8defa1faf1438b4cad8eff4e1b8
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0
