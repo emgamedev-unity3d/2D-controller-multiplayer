@@ -2,7 +2,7 @@ using Unity.Netcode.Components;
 
 /// <summary>
 /// A componet you add to an object to synchronize animations, when the object
-/// is owned by a device (ex. a player you control).
+/// is owned by a device (ex. a player game object you control).
 /// 
 /// Note: Although this is an added component, and not part of the Netcode solution,
 ///   how to easily add this code is mentioned in our documentation.
