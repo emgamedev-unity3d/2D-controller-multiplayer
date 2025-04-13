@@ -10,12 +10,14 @@ public class NetworkManagerUI : MonoBehaviour
     [SerializeField]
     private Button m_clientButton;
 
+    [SerializeField]
+    private Button m_leaveSessionButton;
+
     public void StartHost()
     {
         if(NetworkManager.Singleton.StartHost())
         {
-            m_hostButton.enabled = false;
-            m_clientButton.enabled = false;
+            ChangeUItoInNetworkSession();
         }
     }
 
@@ -23,8 +25,28 @@ public class NetworkManagerUI : MonoBehaviour
     {
         if (NetworkManager.Singleton.StartClient())
         {
-            m_hostButton.enabled = false;
-            m_clientButton.enabled = false;
+            ChangeUItoInNetworkSession();
         }
+    }
+
+    public void ShutdownNetworkManager()
+    {
+        NetworkManager.Singleton.Shutdown();
+
+        ChangeUItoDefault();
+    }
+
+    private void ChangeUItoInNetworkSession()
+    {
+        m_hostButton.interactable = false;
+        m_clientButton.interactable = false;
+        m_leaveSessionButton.interactable = true;
+    }
+
+    private void ChangeUItoDefault()
+    {
+        m_hostButton.interactable = true;
+        m_clientButton.interactable = true;
+        m_leaveSessionButton.interactable = false;
     }
 }
