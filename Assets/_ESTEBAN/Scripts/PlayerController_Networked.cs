@@ -186,8 +186,8 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
         Destroy(fx, .5f);
     }
 
-    [Rpc(SendTo.NotMe, //send RPC to everyone except me
-        Delivery = RpcDelivery.Unreliable)] 
+    //[Rpc(SendTo.NotMe, //send RPC to everyone except me
+    //    Delivery = RpcDelivery.Unreliable)] 
         // ^ non-critical message. Not the end of the world if
         //   a particle FX is not spawned since the purpose is just
         //   cosmetic, and does not affect important gameplay
@@ -207,7 +207,7 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
         Destroy(fx, .5f);
     }
 
-    [Rpc(SendTo.NotMe, Delivery = RpcDelivery.Unreliable)]
+    //[Rpc(SendTo.NotMe, Delivery = RpcDelivery.Unreliable)]
     void EverybodyElseCreateSecondJumpFX_Rpc()
     {
         CreateSecondJumpFX();
