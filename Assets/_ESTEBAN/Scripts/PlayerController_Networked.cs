@@ -9,17 +9,28 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
     public ContactFilter2D groundFilter;
     public Rigidbody2D.SlideMovement slideMovement = new();
 
-    Animator Animator => animator;
-    Animator animator;
-    // TODO: uncomment to allow networked animations
-    // OwnerNetworkAnimator ownerNetworkAnimator;
-
     SpriteRenderer sprite;
     Rigidbody2D rb;
     PlayerInput input;
 
+    Animator Animator => animator;
+    Animator animator;
+    // TODO: uncomment to allow networked animations
+    //OwnerNetworkAnimator ownerNetworkAnimator;
+
     int direction = 1;
     bool isGrounded;
+
+    // TODO: uncomment to allow networked data
+    //readonly NetworkVariable<int> direction = new(
+    //    1,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner);
+    //
+    //private readonly NetworkVariable<bool> isGrounded = new(
+    //    false,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner);
 
     private int Direction
     {
@@ -33,56 +44,52 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
         set { isGrounded = value; }
     }
 
-    // TODO: uncomment to allow networked data
-    //readonly NetworkVariable<int> direction = new(
-    //    1,
-    //    NetworkVariableReadPermission.Everyone,
-    //    NetworkVariableWritePermission.Owner);
-    //
-    //private readonly NetworkVariable<bool> isGrounded = new(
-    //    false,
-    //    NetworkVariableReadPermission.Everyone,
-    //    NetworkVariableWritePermission.Owner);
-
     bool hasDoubleJump;
 
-    //Added after the timer
     public Transform footFXPosition;
     public GameObject doubleJumpFX;
     public GameObject jumpDustFX;
 
 
-    // TODO: uncomment to connect callback functions
-    //public override void OnNetworkSpawn()
-    //{
-    //    if (!IsOwner && IsClient)
-    //    {
-    //        direction.OnValueChanged += EverybodyElseFlipDirection;
-    //        isGrounded.OnValueChanged += EverybodyElseUpdateSpriteColoring;
-    //    }
-    //
-    //    base.OnNetworkSpawn();
-    //}
-
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         input = GetComponent<PlayerInput>();
-
-        animator = GetComponentInChildren<Animator>(true);
-        //ownerNetworkAnimator = GetComponent<OwnerNetworkAnimator>();
-
         sprite = GetComponentInChildren<SpriteRenderer>(true);
 
-        // TODO: uncomment start character with proper coloring
-        //// do an initial check on sprite color, to make sure we spawn and
-        ////  start correctly
-        //if(!IsOwner && IsClient)
-        //{
-        //    ApplySpriteColoringUpdates(isGrounded.Value);
-        //}
+        animator = GetComponentInChildren<Animator>(true);
+
+        // Set to true to enable use of netcode
+    #if false
+        ownerNetworkAnimator = GetComponent<OwnerNetworkAnimator>();
+
+        // do an initial check on sprite color, to make sure we spawn and
+        //  start correctly
+        if(!IsOwner && IsClient)
+        {
+            ApplySpriteColoringUpdates(isGrounded.Value);
+        }
+    #endif
     }
 
+    #region NETWORK_SPAWN
+#if false
+    public override void OnNetworkSpawn()
+    {
+        // Subscribe to the value changed events if we're not the owners of
+        // the player object
+        if (!IsOwner && IsClient)
+        {
+            direction.OnValueChanged += EverybodyElseFlipDirection;
+            isGrounded.OnValueChanged += EverybodyElseUpdateSpriteColoring;
+        }
+    
+        base.OnNetworkSpawn();
+    }
+#endif
+    #endregion
+
+    #region PHYSICS_UPDATE
     void FixedUpdate()
     {
         // TODO: uncomment to only update physics on owner's POV
@@ -104,19 +111,6 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
         IsGrounded = slideMovement.selectedCollider.IsTouching(groundFilter);
 
         ApplySpriteColoringUpdates(IsGrounded);
-    }
-
-    void ApplySpriteColoringUpdates(bool isGrounded)
-    {
-        if (IsGrounded)
-        {
-            hasDoubleJump = true;
-            sprite.color = Color.green;
-        }
-        else
-        {
-            sprite.color = Color.red;
-        }
     }
 
     void ProcessHorizontalMove()
@@ -175,49 +169,13 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
         }
     }
 
-    void CreateFirstJumpFX()
-    {
-        // Added after the timer
-        var fx = Instantiate(
-            jumpDustFX,
-            footFXPosition.position,
-            Quaternion.identity);
-
-        Destroy(fx, .5f);
-    }
-
-    //[Rpc(SendTo.NotMe, //send RPC to everyone except me
-    //    Delivery = RpcDelivery.Unreliable)] 
-        // ^ non-critical message. Not the end of the world if
-        //   a particle FX is not spawned since the purpose is just
-        //   cosmetic, and does not affect important gameplay
-    void EverybodyElseCreateFirstJumpFX_Rpc()
-    {
-        CreateFirstJumpFX();
-    }
-
-    void CreateSecondJumpFX()
-    {
-        // Added after the timer
-        var fx = Instantiate(
-            doubleJumpFX,
-            footFXPosition.position,
-            Quaternion.identity);
-
-        Destroy(fx, .5f);
-    }
-
-    //[Rpc(SendTo.NotMe, Delivery = RpcDelivery.Unreliable)]
-    void EverybodyElseCreateSecondJumpFX_Rpc()
-    {
-        CreateSecondJumpFX();
-    }
-
     void EnableCollider()
     {
         slideMovement.selectedCollider.enabled = true;
     }
+    #endregion
 
+    #region SPRITE_VISUAL_UPDATES
     void FlipDirection()
     {
         Direction *= -1;
@@ -240,4 +198,58 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
     {
         ApplySpriteColoringUpdates(newValue);
     }
+
+    void ApplySpriteColoringUpdates(bool isGrounded)
+    {
+        if (IsGrounded)
+        {
+            hasDoubleJump = true;
+            sprite.color = Color.green;
+        }
+        else
+        {
+            sprite.color = Color.red;
+        }
+    }
+    #endregion
+
+    #region JUMP_VFX
+    void CreateFirstJumpFX()
+    {
+        // Added after the timer
+        var fx = Instantiate(
+            jumpDustFX,
+            footFXPosition.position,
+            Quaternion.identity);
+
+        Destroy(fx, .5f);
+    }
+
+    //[Rpc(SendTo.NotMe, //send RPC to everyone except me
+    //    Delivery = RpcDelivery.Unreliable)] 
+    // ^ non-critical message. Not the end of the world if
+    //   a particle FX is not spawned since the purpose is just
+    //   cosmetic, and does not affect important gameplay
+    void EverybodyElseCreateFirstJumpFX_Rpc()
+    {
+        CreateFirstJumpFX();
+    }
+
+    void CreateSecondJumpFX()
+    {
+        // Added after the timer
+        var fx = Instantiate(
+            doubleJumpFX,
+            footFXPosition.position,
+            Quaternion.identity);
+
+        Destroy(fx, .5f);
+    }
+
+    //[Rpc(SendTo.NotMe, Delivery = RpcDelivery.Unreliable)]
+    void EverybodyElseCreateSecondJumpFX_Rpc()
+    {
+        CreateSecondJumpFX();
+    }
+    #endregion
 }
