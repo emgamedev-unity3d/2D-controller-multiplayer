@@ -1,6 +1,10 @@
 using Unity.Netcode;
 using UnityEngine;
 
+//NOTE:
+// This code is written with presentation and educational purposes in mind,
+//   not an example of real production-level code.
+//
 public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
 {
     public float speed = 5f;
@@ -58,18 +62,17 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
         sprite = GetComponentInChildren<SpriteRenderer>(true);
 
         animator = GetComponentInChildren<Animator>(true);
+        //ownerNetworkAnimator = GetComponent<OwnerNetworkAnimator>();
 
         // Set to true to enable use of netcode
-    #if false
-        ownerNetworkAnimator = GetComponent<OwnerNetworkAnimator>();
-
+#if false
         // do an initial check on sprite color, to make sure we spawn and
         //  start correctly
         if(!IsOwner && IsClient)
         {
             ApplySpriteColoringUpdates(isGrounded.Value);
         }
-    #endif
+#endif
     }
 
     #region NETWORK_SPAWN
