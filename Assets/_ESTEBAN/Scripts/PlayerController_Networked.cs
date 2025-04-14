@@ -22,6 +22,7 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
     // TODO: uncomment to allow networked animations
     //OwnerNetworkAnimator ownerNetworkAnimator;
 
+    // single player gameplay data
     int direction = 1;
     bool isGrounded;
 
