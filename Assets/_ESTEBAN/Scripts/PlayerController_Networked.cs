@@ -22,7 +22,8 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
     // TODO: uncomment to allow networked animations
     //OwnerNetworkAnimator ownerNetworkAnimator;
 
-    // single player gameplay data
+    // single player gameplay data, also used for switching animations
+    // and updating sprite visuals
     int direction = 1;
     bool isGrounded;
 
@@ -102,7 +103,7 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
     {
         IsGrounded = slideMovement.selectedCollider.IsTouching(groundFilter);
 
-        if (isGrounded)
+        if (IsGrounded)
         {
             hasDoubleJump = true;
         }
