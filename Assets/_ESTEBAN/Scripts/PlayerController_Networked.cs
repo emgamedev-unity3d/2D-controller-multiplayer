@@ -64,16 +64,6 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
 
         animator = GetComponentInChildren<Animator>(true);
         //ownerNetworkAnimator = GetComponent<OwnerNetworkAnimator>();
-
-        // Set to true to enable use of netcode
-#if false
-        // do an initial check on sprite color, to make sure we spawn and
-        //  start correctly
-        if(!IsOwner && IsClient)
-        {
-            ApplySpriteColoringUpdates(isGrounded.Value);
-        }
-#endif
     }
 
     #region NETWORK_SPAWN
@@ -85,7 +75,6 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
         if (!IsOwner && IsClient)
         {
             direction.OnValueChanged += EverybodyElseFlipDirection;
-            isGrounded.OnValueChanged += EverybodyElseUpdateSpriteColoring;
         }
     
         base.OnNetworkSpawn();
@@ -100,8 +89,7 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
         //if (!IsOwner)
         //    return;
 
-        UpdateSpriteColoring();
-
+        UpdateIsGroundedCondition();
         ProcessHorizontalMove();
         ProcessJump();
 
@@ -110,11 +98,14 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
         Animator.SetBool("Grounded", IsGrounded);
     }
 
-    void UpdateSpriteColoring()
+    void UpdateIsGroundedCondition()
     {
         IsGrounded = slideMovement.selectedCollider.IsTouching(groundFilter);
 
-        ApplySpriteColoringUpdates(IsGrounded);
+        if (isGrounded)
+        {
+            hasDoubleJump = true;
+        }
     }
 
     void ProcessHorizontalMove()
@@ -196,24 +187,6 @@ public class PlayerController_Networked : MonoBehaviour //NetworkBehaviour
             sprite.flipX = false;
         else
             sprite.flipX = true;
-    }
-
-    void EverybodyElseUpdateSpriteColoring(bool oldValue, bool newValue)
-    {
-        ApplySpriteColoringUpdates(newValue);
-    }
-
-    void ApplySpriteColoringUpdates(bool isGrounded)
-    {
-        if (IsGrounded)
-        {
-            hasDoubleJump = true;
-            sprite.color = Color.green;
-        }
-        else
-        {
-            sprite.color = Color.red;
-        }
     }
     #endregion
 
